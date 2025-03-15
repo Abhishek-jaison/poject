@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'routes.dart';
 
 void main() async {
-  // WidgetsFlutterBinding.ensureInitialized();
-  // await Firebase.initializeApp();
   runApp(MyApp());
 }
 
@@ -12,9 +9,22 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Your App Name',
       debugShowCheckedModeBanner: false,
-      initialRoute: '/',
+      theme: ThemeData(
+        primaryColor: Color(0xFFE6BFFF),
+        scaffoldBackgroundColor: Colors.white,
+      ),
+      initialRoute: '/login',
       routes: appRoutes,
+      onGenerateRoute: (settings) {
+        return MaterialPageRoute(
+          builder:
+              (context) => Scaffold(
+                body: Center(child: Text('Route ${settings.name} not found')),
+              ),
+        );
+      },
     );
   }
 }

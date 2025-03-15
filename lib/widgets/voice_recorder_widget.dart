@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:record/record.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
@@ -16,7 +17,9 @@ class VoiceRecorderWidget extends StatefulWidget {
 class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget>
     with SingleTickerProviderStateMixin {
   final AudioRecorder _audioRecorder = AudioRecorder();
+  final AudioPlayer _audioPlayer = AudioPlayer();
   bool isRecording = false;
+  bool isPlaying = false;
   String? _recordedFilePath;
 
   late AnimationController _animationController;
@@ -49,6 +52,13 @@ class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget>
       } else if (status == AnimationStatus.dismissed) {
         _animationController.forward();
       }
+    });
+
+    // Listen to audio player state changes
+    _audioPlayer.onPlayerComplete.listen((event) {
+      setState(() {
+        isPlaying = false;
+      });
     });
   }
 
@@ -98,6 +108,9 @@ class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget>
         String? path = await _audioRecorder.stop();
         if (path != null) {
           widget.onRecordingDone(path);
+          setState(() {
+            _recordedFilePath = path;
+          });
         }
         setState(() {
           isRecording = false;
@@ -111,18 +124,59 @@ class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget>
     }
   }
 
+  Future<void> _playRecording() async {
+    try {
+      if (_recordedFilePath != null) {
+        if (isPlaying) {
+          await _audioPlayer.stop();
+          setState(() {
+            isPlaying = false;
+          });
+        } else {
+          await _audioPlayer.play(DeviceFileSource(_recordedFilePath!));
+          setState(() {
+            isPlaying = true;
+          });
+        }
+      }
+    } catch (e) {
+      print("Failed to play recording: $e");
+    }
+  }
+
   @override
   void dispose() {
     _audioRecorder.dispose();
+    _audioPlayer.dispose();
     _animationController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        // Record button
+        GestureDetector(
+          onTap: () {
+            if (isRecording) {
+              _stopRecording();
+            } else {
+              _startRecording();
+            }
+          },
+          child: Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isRecording ? Colors.red : Color(0xFFE6BFFF),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.mic, size: 40, color: Colors.white),
+          ),
+        ),
+        SizedBox(width: 16),
+        // Recording animation
         if (isRecording)
           Container(
             height: 50, // Fixed height for the dots container
@@ -146,24 +200,25 @@ class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget>
               }),
             ),
           ),
-        SizedBox(height: 16),
-        GestureDetector(
-          onTap: () {
-            if (isRecording) {
-              _stopRecording();
-            } else {
-              _startRecording();
-            }
-          },
-          child: Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isRecording ? Colors.red : Color(0xFFE6BFFF),
-              shape: BoxShape.circle,
+        // Play button (shows only when there's a recording)
+        if (!isRecording && _recordedFilePath != null) ...[
+          SizedBox(width: 16),
+          GestureDetector(
+            onTap: _playRecording,
+            child: Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Color(0xFFE6BFFF),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isPlaying ? Icons.stop : Icons.play_arrow,
+                size: 40,
+                color: Colors.white,
+              ),
             ),
-            child: Icon(Icons.mic, size: 40, color: Colors.white),
           ),
-        ),
+        ],
       ],
     );
   }

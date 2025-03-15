@@ -13,4 +13,8 @@ class AuthService {
     }
     return false;
   }
+
+  static Future<void> logout() async {
+    userRole = ""; // Clear the user role
+  }
 }
